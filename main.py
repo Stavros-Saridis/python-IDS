@@ -1,6 +1,13 @@
+import sys
+import os
+
+sys.path.insert(0, os.path.dirname(__file__))
+
 from scapy.all import sniff, IP, TCP, UDP, ICMP
 from datetime import datetime
-from src.database import get_connection
+from src.database import init_db, get_connection
+from src.detector import analyze_packet
+from src.alerter import log_alert_to_file
 
 def process_packet(packet):
     if not packet.haslayer(IP):
@@ -25,6 +32,7 @@ def process_packet(packet):
     elif packet.haslayer(ICMP):
         protocol = "ICMP"
 
+    # Log to database
     conn = get_connection()
     conn.execute('''
         INSERT INTO packets (timestamp, src_ip, dst_ip, protocol, src_port, dst_port, length)
@@ -35,6 +43,12 @@ def process_packet(packet):
 
     print(f"[{timestamp}] {protocol} {src_ip}:{src_port} -> {dst_ip}:{dst_port} ({length} bytes)")
 
-def start_sniffing(interface=None, packet_count=0):
-    print("[*] Starting packet capture...")
-    sniff(iface=interface, prn=process_packet, store=False, count=packet_count)
+    # Run detection
+    if protocol in ("TCP", "UDP") and dst_port:
+        analyze_packet(src_ip, dst_ip, protocol, dst_port)
+
+if __name__ == "__main__":
+    print("[*] Initializing database...")
+    init_db()
+    print("[*] Starting IDS — press Ctrl+C to stop")
+    sniff(prn=process_packet, store=False)
