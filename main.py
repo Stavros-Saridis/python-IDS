@@ -51,4 +51,5 @@ if __name__ == "__main__":
     print("[*] Initializing database...")
     init_db()
     print("[*] Starting IDS — press Ctrl+C to stop")
-    sniff(prn=process_packet, store=False)
+    WIFI_INTERFACE = r"\Device\NPF_{6837E140-D80A-450D-AAAF-52C611E3E5B8}"
+    sniff(iface=WIFI_INTERFACE, prn=process_packet, store=False)
